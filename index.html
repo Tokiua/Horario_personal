@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nonualco Shop - Agenda Diaria</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- PWA: Manifiesto y Service Worker -->
+  <!-- PWA: Manifiesto -->
   <link rel="manifest" href="data:application/manifest+json,{
     'name': 'Nonualco Shop Agenda',
     'short_name': 'Agenda',
@@ -29,26 +29,37 @@
     <h1 class="text-2xl font-bold text-center mb-4">Nonualco Shop - Agenda Diaria</h1>
     <p class="text-center text-gray-600 mb-4">Josué Raúl Pineda Santos</p>
 
-    <!-- Agenda -->
-    <div id="agenda" class="space-y-4"></div>
-
-    <!-- Campo para interactuar con Grok -->
-    <div class="mt-6">
-      <h2 class="text-lg font-semibold">Habla con Grok</h2>
-      <textarea id="grokInput" class="w-full p-2 border rounded" rows="4" placeholder="Ej: 'Añade subtarea para Trabajo en la app: Diseñar página de inicio'"></textarea>
-      <button id="grokSubmit" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Enviar</button>
-      <p id="grokResponse" class="mt-2 text-gray-700"></p>
+    <!-- Configuración de notificaciones -->
+    <div class="mb-6">
+      <h2 class="text-lg font-semibold">Configurar Notificaciones</h2>
+      <button id="enableNotifications" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Activar Notificaciones</button>
+      <p id="notificationStatus" class="text-sm mt-2 text-gray-600">Estado: No activadas</p>
     </div>
 
-    <!-- Planificación del día siguiente -->
-    <div id="nextDayPlanner" class="mt-6 hidden">
-      <h2 class="text-lg font-semibold">Planifica el Día Siguiente</h2>
-      <div id="nextDayAgenda" class="space-y-4"></div>
+    <!-- Organización de Hoy -->
+    <div class="mb-6">
+      <h2 class="text-lg font-semibold">Organización de Hoy</h2>
+      <div id="todayAgenda" class="space-y-2"></div>
+    </div>
+
+    <!-- Organización de Mañana -->
+    <div class="mb-6">
+      <h2 class="text-lg font-semibold">Organización de Mañana</h2>
+      <button id="planTomorrow" class="bg-green-500 text-white px-4 py-2 rounded mb-2 hover:bg-green-600">Detallar Mañana</button>
+      <div id="tomorrowAgenda" class="space-y-2 hidden"></div>
+    </div>
+
+    <!-- Campo para Grok -->
+    <div class="mt-6">
+      <h2 class="text-lg font-semibold">Habla con Grok</h2>
+      <textarea id="grokInput" class="w-full p-2 border rounded" rows="4" placeholder="Ej: 'Añade subtarea para Trabajo en la app hoy: Diseñar UI'"></textarea>
+      <button id="grokSubmit" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Enviar</button>
+      <p id="grokResponse" class="mt-2 text-gray-700"></p>
     </div>
   </div>
 
   <script>
-    // Agenda base (hoy y mañana)
+    // Agenda base
     let todaySchedule = [
       { time: "6:00 - 6:30 AM", activity: "Levantarse, aseo personal, hacer la cama", subtasks: [] },
       { time: "6:30 - 7:00 AM", activity: "Desayuno tranquilo", subtasks: [] },
@@ -65,58 +76,58 @@
       { time: "7:00 - 7:30 PM", activity: "Descanso y preparación para reunión", subtasks: [] },
       { time: "7:30 - 9:00 PM", activity: "Reuniones con equipo / temas importantes del negocio", subtasks: [], hasMeeting: null },
     ];
-    let tomorrowSchedule = JSON.parse(JSON.stringify(todaySchedule)); // Copia inicial
+    let tomorrowSchedule = JSON.parse(JSON.stringify(todaySchedule));
 
     // Renderizar agenda de hoy
-    const agendaDiv = document.getElementById("agenda");
+    const todayAgendaDiv = document.getElementById("todayAgenda");
     function renderTodayAgenda() {
-      agendaDiv.innerHTML = "";
+      todayAgendaDiv.innerHTML = "";
       todaySchedule.forEach((item, index) => {
         const block = document.createElement("div");
-        block.className = "bg-white p-4 rounded shadow";
+        block.className = "bg-white p-3 rounded shadow flex justify-between items-center";
         let meetingButtons = "";
         if (item.activity.includes("Reuniones con equipo")) {
           meetingButtons = `
-            <p class="mt-2">¿Toca reunión hoy?</p>
-            <button onclick="setMeeting(${index}, true)" class="bg-green-500 text-white px-2 py-1 rounded mr-2">Sí</button>
-            <button onclick="setMeeting(${index}, false)" class="bg-red-500 text-white px-2 py-1 rounded">No</button>
-            <p class="text-sm mt-1">${item.hasMeeting === null ? "Pendiente" : item.hasMeeting ? "Reunión confirmada" : "Sin reunión, usa este tiempo para planificar"}</p>
+            <div class="mt-2">
+              <p class="text-sm">¿Toca reunión hoy?</p>
+              <button onclick="setMeeting(${index}, true)" class="bg-green-500 text-white px-2 py-1 rounded mr-1 text-sm">Sí</button>
+              <button onclick="setMeeting(${index}, false)" class="bg-red-500 text-white px-2 py-1 rounded text-sm">No</button>
+              <p class="text-xs mt-1">${item.hasMeeting === null ? "Pendiente" : item.hasMeeting ? "Reunión confirmada" : "Sin reunión, planifica o aprende"}</p>
+            </div>
           `;
         }
         block.innerHTML = `
-          <p class="font-semibold">${item.time}</p>
-          <p>${item.activity}</p>
-          <div class="mt-2">
-            <h3 class="text-sm font-medium">Subtareas:</h3>
-            <ul id="subtasks-${index}" class="list-disc pl-5 text-sm"></ul>
-            <input id="subtaskInput-${index}" class="w-full p-1 border rounded mt-2" placeholder="Añadir subtarea...">
-            <button onclick="addSubtask(${index}, 'today')" class="mt-1 bg-green-500 text-white px-2 py-1 rounded text-sm">Añadir</button>
+          <div>
+            <p class="text-sm font-semibold">${item.time}</p>
+            <p class="text-sm">${item.activity}</p>
+            <ul id="subtasks-${index}" class="list-disc pl-4 text-xs mt-1"></ul>
+            <input id="subtaskInput-${index}" class="w-full p-1 border rounded mt-1 text-sm" placeholder="Añadir subtarea...">
+            <button onclick="addSubtask(${index}, 'today')" class="mt-1 bg-green-500 text-white px-2 py-1 rounded text-xs">Añadir</button>
+            ${meetingButtons}
           </div>
-          ${meetingButtons}
         `;
-        agendaDiv.appendChild(block);
+        todayAgendaDiv.appendChild(block);
         updateSubtasks(index, "today");
       });
     }
 
-    // Renderizar agenda de mañana (para planificación)
-    const nextDayAgendaDiv = document.getElementById("nextDayAgenda");
+    // Renderizar agenda de mañana
+    const tomorrowAgendaDiv = document.getElementById("tomorrowAgenda");
     function renderTomorrowAgenda() {
-      nextDayAgendaDiv.innerHTML = "";
+      tomorrowAgendaDiv.innerHTML = "";
       tomorrowSchedule.forEach((item, index) => {
         const block = document.createElement("div");
-        block.className = "bg-white p-4 rounded shadow";
+        block.className = "bg-white p-3 rounded shadow flex justify-between items-center";
         block.innerHTML = `
-          <p class="font-semibold">${item.time}</p>
-          <p>${item.activity}</p>
-          <div class="mt-2">
-            <h3 class="text-sm font-medium">Subtareas:</h3>
-            <ul id="tomorrow-subtasks-${index}" class="list-disc pl-5 text-sm"></ul>
-            <input id="tomorrow-subtaskInput-${index}" class="w-full p-1 border rounded mt-2" placeholder="Añadir subtarea...">
-            <button onclick="addSubtask(${index}, 'tomorrow')" class="mt-1 bg-green-500 text-white px-2 py-1 rounded text-sm">Añadir</button>
+          <div>
+            <p class="text-sm font-semibold">${item.time}</p>
+            <p class="text-sm">${item.activity}</p>
+            <ul id="tomorrow-subtasks-${index}" class="list-disc pl-4 text-xs mt-1"></ul>
+            <input id="tomorrow-subtaskInput-${index}" class="w-full p-1 border rounded mt-1 text-sm" placeholder="Añadir subtarea...">
+            <button onclick="addSubtask(${index}, 'tomorrow')" class="mt-1 bg-green-500 text-white px-2 py-1 rounded text-xs">Añadir</button>
           </div>
         `;
-        nextDayAgendaDiv.appendChild(block);
+        tomorrowAgendaDiv.appendChild(block);
         updateSubtasks(index, "tomorrow");
       });
     }
@@ -185,27 +196,37 @@
         renderTodayAgenda();
         renderTomorrowAgenda();
         scheduleNotifications();
-        rotateSchedules(); // Programar para el próximo día
+        rotateSchedules();
       }, timeUntilMidnight);
     }
     rotateSchedules();
 
     // Notificaciones y voz
-    function requestNotificationPermission() {
-      if (Notification.permission !== "granted") {
-        Notification.requestPermission();
-      }
-    }
+    let notificationsEnabled = false;
+    const enableNotificationsBtn = document.getElementById("enableNotifications");
+    const notificationStatus = document.getElementById("notificationStatus");
+
+    enableNotificationsBtn.addEventListener("click", () => {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          notificationsEnabled = true;
+          notificationStatus.textContent = "Estado: Activadas";
+          scheduleNotifications();
+        } else {
+          notificationStatus.textContent = "Estado: Permiso denegado";
+        }
+      });
+    });
 
     function sendNotification(time, activity, subtasks) {
-      if (Notification.permission === "granted") {
+      if (notificationsEnabled && Notification.permission === "granted") {
         const body = subtasks.length ? `${activity} (Subtareas: ${subtasks.join(", ")})` : activity;
         new Notification(`Nonualco Shop - ${time}`, {
           body,
           icon: "https://via.placeholder.com/32",
         });
         // Sonido fuerte
-        const audio = new Audio("https://freesound.org/data/previews/316/316847_4939433-lq.mp3");
+        const audio = new Audio("https://freesound.org/data/previews/320/320873_5260872-lq.mp3");
         audio.play();
         // Leer en voz alta
         const utterance = new SpeechSynthesisUtterance(`A las ${time}: ${body}`);
@@ -218,7 +239,7 @@
     function scheduleNotifications() {
       const now = new Date();
       todaySchedule.forEach(item => {
-        if (!item.activity.includes("Dormir")) { // Excluir dormir
+        if (!item.activity.includes("Dormir")) {
           const [startTime] = item.time.split(" - ");
           const [hours, minutes, period] = startTime.match(/(\d+):(\d+)\s*(AM|PM)/).slice(1);
           let hour = parseInt(hours);
@@ -234,24 +255,15 @@
         }
       });
     }
-    requestNotificationPermission();
-    scheduleNotifications();
 
-    // Mostrar planificador de mañana a las 9:00 PM
-    const nextDayPlanner = document.getElementById("nextDayPlanner");
-    function checkPlannerTime() {
-      const now = new Date();
-      const hours = now.getHours();
-      if (hours >= 21) { // 9:00 PM
-        nextDayPlanner.classList.remove("hidden");
-      } else {
-        nextDayPlanner.classList.add("hidden");
-      }
-      setTimeout(checkPlannerTime, 60000); // Revisar cada minuto
-    }
-    checkPlannerTime();
+    // Mostrar/ocultar agenda de mañana
+    const planTomorrowBtn = document.getElementById("planTomorrow");
+    planTomorrowBtn.addEventListener("click", () => {
+      tomorrowAgendaDiv.classList.toggle("hidden");
+      renderTomorrowAgenda();
+    });
 
-    // Interacción con Grok (simulada)
+    // Interacción con Grok
     const grokInput = document.getElementById("grokInput");
     const grokSubmit = document.getElementById("grokSubmit");
     const grokResponse = document.getElementById("grokResponse");
@@ -263,37 +275,6 @@
         if (input.includes("subtarea")) {
           const match = input.match(/para (.+): (.+)/);
           if (match) {
-            const activity = match[1];
-            const subtask = match[2];
-            const indexToday = todaySchedule.findIndex(item => item.activity.toLowerCase().includes(activity.toLowerCase()));
-            const indexTomorrow = tomorrowSchedule.findIndex(item => item.activity.toLowerCase().includes(activity.toLowerCase()));
-            if (indexToday !== -1 && input.includes("hoy")) {
-              todaySchedule[indexToday].subtasks.push(subtask);
-              updateSubtasks(indexToday, "today");
-              response += `Añadí la subtarea "${subtask}" a "${activity}" para hoy.`;
-            } else if (indexTomorrow !== -1 && input.includes("mañana")) {
-              tomorrowSchedule[indexTomorrow].subtasks.push(subtask);
-              updateSubtasks(indexTomorrow, "tomorrow");
-              response += `Añadí la subtarea "${subtask}" a "${activity}" para mañana.`;
-            } else {
-              response += `No encontré la actividad "${activity}" o no especificaste hoy/mañana.`;
-            }
-          }
-        } else if (input.includes("recordatorios")) {
-          response += `Agenda de hoy:\n${todaySchedule.map(item => `${item.time}: ${item.activity} ${item.subtasks.length ? "(Subtareas: " + item.subtasks.join(", ") + ")" : ""}`).join("\n")}`;
-        } else {
-          response += `Guardé tu instrucción: "${input}". Pídeme un resumen o más detalles cuando quieras.`;
-        }
-        grokResponse.textContent = response;
-        saveSchedules();
-        grokInput.value = "";
-      }
-    });
+            const activity = match '
 
-    // Service Worker para PWA (offline)
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("data:application/javascript,addEventListener('install',()=>{self.skipWaiting()});addEventListener('activate',e=>{e.waitUntil(self.clients.claim())});addEventListener('fetch',e=>{e.respondWith(fetch(e.request))});");
-    }
-  </script>
-</body>
-</html>
+System: * Today's date and time is 01:31 PM CST on Friday, May 16, 2025.
