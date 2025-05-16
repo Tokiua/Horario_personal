@@ -89,13 +89,16 @@
         new Notification(`Nonualco Shop - ${time}`, {
           body: activity,
           icon: "https://via.placeholder.com/32",
+          requireInteraction: true, // Mantiene la notificación hasta que la interactúes
         });
-        // Sonido fuerte
-        const audio = new Audio("https://freesound.org/data/previews/320/320873_5260872-lq.mp3");
+        // Sonido fuerte en bucle breve
+        const audio = new Audio("https://freesound.org/data/previews/316/316847_4939433-lq.mp3");
+        audio.loop = true;
         audio.play();
+        setTimeout(() => audio.loop = false, 5000); // Detener bucle después de 5 segundos
         // Leer en voz alta
-        const utterance = new SpeechSynthesisUtterance(`A las ${time}: ${activity}`);
-        utterance.lang = "es-SV"; // Español de El Salvador
+        const utterance = new SpeechSynthesisUtterance(`Son las ${time}: ${activity}`);
+        utterance.lang = "es-SV";
         utterance.volume = 1;
         utterance.rate = 1;
         utterance.pitch = 1;
@@ -106,13 +109,13 @@
     // Programar notificaciones
     function scheduleNotifications() {
       const now = new Date();
-      // Ajustar a la zona horaria de El Salvador (CST, UTC-6)
-      const cstOffset = -6 * 60; // CST es UTC-6
+      // Ajustar a CST (El Salvador, UTC-6)
+      const cstOffset = -6 * 60;
       const cstTime = new Date(now.getTime() + (cstOffset - now.getTimezoneOffset()) * 60000);
 
-      // Verificar si es lunes a sábado
-      const dayOfWeek = cstTime.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
-      if (dayOfWeek === 0) return; // No programar notificaciones los domingos
+      // Excluir domingos
+      const dayOfWeek = cstTime.getDay();
+      if (dayOfWeek === 0) return;
 
       schedule.forEach(item => {
         const [time, period] = item.time.split(" ");
@@ -123,7 +126,6 @@
         const taskTime = new Date(cstTime);
         taskTime.setHours(hours, minutes, 0, 0);
 
-        // Programar solo si la hora está en el futuro
         if (taskTime > cstTime) {
           const delay = taskTime - cstTime;
           setTimeout(() => sendNotification(item.time, item.activity), delay);
@@ -143,7 +145,7 @@
 
     // Service Worker para PWA
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("data:application/javascript,addEventListener('install',()=>{self.skipWaiting()});addEventListener('activate',e=>{e.waitUntil(self.clients.claim())});addEventListener('fetch',e=>{e.respondWith(fetch(e.request))});");
+      navigator.serviceWorker.register("data:application/javascript,addEventListener('install',()=>{self.skipWaiting()});addEventListener('activate',e=>{e.waitUntil(self.clients.claim())});addEventListener('fetch',e=>{e.respondWith(fetch(e.request))});addEventListener('push',e=>{const data=e.data.json();self.registration.showNotification(data.title,{body:data.body,icon:data.icon,requireInteraction:true})});");
     }
   </script>
 </body>
