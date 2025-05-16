@@ -44,20 +44,20 @@
   <script>
     // Horario basado en el PDF
     const schedule = [
-      { time: "6:00 - 6:30 AM", activity: "Levantarse, aseo personal, hacer la cama" },
-      { time: "6:30 - 7:00 AM", activity: "Desayuno tranquilo" },
-      { time: "7:00 - 8:00 AM", activity: "Limpieza del hogar o pequeñas reparaciones" },
-      { time: "8:00 - 10:00 AM", activity: "Trabajo en el desarrollo de la app/web" },
-      { time: "10:00 - 10:30 AM", activity: "Merienda saludable" },
-      { time: "10:30 - 12:30 PM", activity: "Continuar con trabajo en la app" },
-      { time: "12:30 - 1:30 PM", activity: "Almuerzo y pequeño descanso" },
-      { time: "1:30 - 2:30 PM", activity: "Uso del celular (redes, mensajes, entretenimiento moderado)" },
-      { time: "2:30 - 4:30 PM", activity: "Segunda sesión de trabajo o aprendizaje" },
-      { time: "4:30 - 5:00 PM", activity: "Merienda ligera" },
-      { time: "5:00 - 6:00 PM", activity: "Actividades personales o del hogar" },
-      { time: "6:00 - 7:00 PM", activity: "Cena" },
-      { time: "7:00 - 7:30 PM", activity: "Descanso y preparación para reunión" },
-      { time: "7:30 - 9:00 PM", activity: "Reuniones con equipo / temas importantes del negocio" },
+      { time: "6:00 AM", activity: "Levantarse, aseo personal, hacer la cama" },
+      { time: "6:30 AM", activity: "Desayuno tranquilo" },
+      { time: "7:00 AM", activity: "Limpieza del hogar o pequeñas reparaciones" },
+      { time: "8:00 AM", activity: "Trabajo en el desarrollo de la app/web" },
+      { time: "10:00 AM", activity: "Merienda saludable" },
+      { time: "10:30 AM", activity: "Continuar con trabajo en la app" },
+      { time: "12:30 PM", activity: "Almuerzo y pequeño descanso" },
+      { time: "1:30 PM", activity: "Uso del celular (redes, mensajes, entretenimiento moderado)" },
+      { time: "2:30 PM", activity: "Segunda sesión de trabajo o aprendizaje" },
+      { time: "4:30 PM", activity: "Merienda ligera" },
+      { time: "5:00 PM", activity: "Actividades personales o del hogar" },
+      { time: "6:00 PM", activity: "Cena" },
+      { time: "7:00 PM", activity: "Descanso y preparación para reunión" },
+      { time: "7:30 PM", activity: "Reuniones con equipo / temas importantes del negocio" },
     ];
 
     // Renderizar tabla
@@ -95,7 +95,10 @@
         audio.play();
         // Leer en voz alta
         const utterance = new SpeechSynthesisUtterance(`A las ${time}: ${activity}`);
-        utterance.lang = "es-ES";
+        utterance.lang = "es-SV"; // Español de El Salvador
+        utterance.volume = 1;
+        utterance.rate = 1;
+        utterance.pitch = 1;
         window.speechSynthesis.speak(utterance);
       }
     }
@@ -103,20 +106,36 @@
     // Programar notificaciones
     function scheduleNotifications() {
       const now = new Date();
-      schedule.forEach(item => {
-        const [startTime] = item.time.split(" - ");
-        const [hours, minutes, period] = startTime.match(/(\d+):(\d+)\s*(AM|PM)/).slice(1);
-        let hour = parseInt(hours);
-        if (period === "PM" && hour !== 12) hour += 12;
-        if (period === "AM" && hour === 12) hour = 0;
-        const taskTime = new Date(now);
-        taskTime.setHours(hour, parseInt(minutes), 0, 0);
+      // Ajustar a la zona horaria de El Salvador (CST, UTC-6)
+      const cstOffset = -6 * 60; // CST es UTC-6
+      const cstTime = new Date(now.getTime() + (cstOffset - now.getTimezoneOffset()) * 60000);
 
-        if (taskTime > now) {
-          const delay = taskTime - now;
+      // Verificar si es lunes a sábado
+      const dayOfWeek = cstTime.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+      if (dayOfWeek === 0) return; // No programar notificaciones los domingos
+
+      schedule.forEach(item => {
+        const [time, period] = item.time.split(" ");
+        let [hours, minutes] = time.split(":").map(Number);
+        if (period === "PM" && hours !== 12) hours += 12;
+        if (period === "AM" && hours === 12) hours = 0;
+
+        const taskTime = new Date(cstTime);
+        taskTime.setHours(hours, minutes, 0, 0);
+
+        // Programar solo si la hora está en el futuro
+        if (taskTime > cstTime) {
+          const delay = taskTime - cstTime;
           setTimeout(() => sendNotification(item.time, item.activity), delay);
         }
       });
+
+      // Reprogramar para el próximo día
+      const nextDay = new Date(cstTime);
+      nextDay.setDate(cstTime.getDate() + 1);
+      nextDay.setHours(0, 0, 0, 0);
+      const timeUntilNextDay = nextDay - cstTime;
+      setTimeout(scheduleNotifications, timeUntilNextDay);
     }
 
     // Pedir permiso al cargar
