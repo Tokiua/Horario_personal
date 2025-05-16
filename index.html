@@ -29,207 +29,72 @@
     <h1 class="text-2xl font-bold text-center mb-4">Nonualco Shop - Agenda Diaria</h1>
     <p class="text-center text-gray-600 mb-4">Josué Raúl Pineda Santos</p>
 
-    <!-- Configuración de notificaciones -->
-    <div class="mb-6">
-      <h2 class="text-lg font-semibold">Configurar Notificaciones</h2>
-      <button id="enableNotifications" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Activar Notificaciones</button>
-      <p id="notificationStatus" class="text-sm mt-2 text-gray-600">Estado: No activadas</p>
-    </div>
-
-    <!-- Organización de Hoy -->
-    <div class="mb-6">
-      <h2 class="text-lg font-semibold">Organización de Hoy</h2>
-      <div id="todayAgenda" class="space-y-2"></div>
-    </div>
-
-    <!-- Organización de Mañana -->
-    <div class="mb-6">
-      <h2 class="text-lg font-semibold">Organización de Mañana</h2>
-      <button id="planTomorrow" class="bg-green-500 text-white px-4 py-2 rounded mb-2 hover:bg-green-600">Detallar Mañana</button>
-      <div id="tomorrowAgenda" class="space-y-2 hidden"></div>
-    </div>
-
-    <!-- Campo para Grok -->
-    <div class="mt-6">
-      <h2 class="text-lg font-semibold">Habla con Grok</h2>
-      <textarea id="grokInput" class="w-full p-2 border rounded" rows="4" placeholder="Ej: 'Añade subtarea para Trabajo en la app hoy: Diseñar UI'"></textarea>
-      <button id="grokSubmit" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Enviar</button>
-      <p id="grokResponse" class="mt-2 text-gray-700"></p>
-    </div>
+    <!-- Tabla de horario -->
+    <table class="w-full border-collapse bg-white rounded shadow">
+      <thead>
+        <tr class="bg-blue-500 text-white">
+          <th class="p-2 border">Hora</th>
+          <th class="p-2 border">Actividad</th>
+        </tr>
+      </thead>
+      <tbody id="agendaTable"></tbody>
+    </table>
   </div>
 
   <script>
-    // Agenda base
-    let todaySchedule = [
-      { time: "6:00 - 6:30 AM", activity: "Levantarse, aseo personal, hacer la cama", subtasks: [] },
-      { time: "6:30 - 7:00 AM", activity: "Desayuno tranquilo", subtasks: [] },
-      { time: "7:00 - 8:00 AM", activity: "Limpieza del hogar o pequeñas reparaciones", subtasks: [] },
-      { time: "8:00 - 10:00 AM", activity: "Trabajo en el desarrollo de la app/web", subtasks: [] },
-      { time: "10:00 - 10:30 AM", activity: "Merienda saludable", subtasks: [] },
-      { time: "10:30 - 12:30 PM", activity: "Continuar con trabajo en la app", subtasks: [] },
-      { time: "12:30 - 1:30 PM", activity: "Almuerzo y pequeño descanso", subtasks: [] },
-      { time: "1:30 - 2:30 PM", activity: "Uso del celular (redes, mensajes, entretenimiento moderado)", subtasks: [] },
-      { time: "2:30 - 4:30 PM", activity: "Segunda sesión de trabajo o aprendizaje", subtasks: [] },
-      { time: "4:30 - 5:00 PM", activity: "Merienda ligera", subtasks: [] },
-      { time: "5:00 - 6:00 PM", activity: "Actividades personales o del hogar", subtasks: [] },
-      { time: "6:00 - 7:00 PM", activity: "Cena", subtasks: [] },
-      { time: "7:00 - 7:30 PM", activity: "Descanso y preparación para reunión", subtasks: [] },
-      { time: "7:30 - 9:00 PM", activity: "Reuniones con equipo / temas importantes del negocio", subtasks: [], hasMeeting: null },
+    // Horario basado en el PDF
+    const schedule = [
+      { time: "6:00 - 6:30 AM", activity: "Levantarse, aseo personal, hacer la cama" },
+      { time: "6:30 - 7:00 AM", activity: "Desayuno tranquilo" },
+      { time: "7:00 - 8:00 AM", activity: "Limpieza del hogar o pequeñas reparaciones" },
+      { time: "8:00 - 10:00 AM", activity: "Trabajo en el desarrollo de la app/web" },
+      { time: "10:00 - 10:30 AM", activity: "Merienda saludable" },
+      { time: "10:30 - 12:30 PM", activity: "Continuar con trabajo en la app" },
+      { time: "12:30 - 1:30 PM", activity: "Almuerzo y pequeño descanso" },
+      { time: "1:30 - 2:30 PM", activity: "Uso del celular (redes, mensajes, entretenimiento moderado)" },
+      { time: "2:30 - 4:30 PM", activity: "Segunda sesión de trabajo o aprendizaje" },
+      { time: "4:30 - 5:00 PM", activity: "Merienda ligera" },
+      { time: "5:00 - 6:00 PM", activity: "Actividades personales o del hogar" },
+      { time: "6:00 - 7:00 PM", activity: "Cena" },
+      { time: "7:00 - 7:30 PM", activity: "Descanso y preparación para reunión" },
+      { time: "7:30 - 9:00 PM", activity: "Reuniones con equipo / temas importantes del negocio" },
     ];
-    let tomorrowSchedule = JSON.parse(JSON.stringify(todaySchedule));
 
-    // Renderizar agenda de hoy
-    const todayAgendaDiv = document.getElementById("todayAgenda");
-    function renderTodayAgenda() {
-      todayAgendaDiv.innerHTML = "";
-      todaySchedule.forEach((item, index) => {
-        const block = document.createElement("div");
-        block.className = "bg-white p-3 rounded shadow flex justify-between items-center";
-        let meetingButtons = "";
-        if (item.activity.includes("Reuniones con equipo")) {
-          meetingButtons = `
-            <div class="mt-2">
-              <p class="text-sm">¿Toca reunión hoy?</p>
-              <button onclick="setMeeting(${index}, true)" class="bg-green-500 text-white px-2 py-1 rounded mr-1 text-sm">Sí</button>
-              <button onclick="setMeeting(${index}, false)" class="bg-red-500 text-white px-2 py-1 rounded text-sm">No</button>
-              <p class="text-xs mt-1">${item.hasMeeting === null ? "Pendiente" : item.hasMeeting ? "Reunión confirmada" : "Sin reunión, planifica o aprende"}</p>
-            </div>
-          `;
-        }
-        block.innerHTML = `
-          <div>
-            <p class="text-sm font-semibold">${item.time}</p>
-            <p class="text-sm">${item.activity}</p>
-            <ul id="subtasks-${index}" class="list-disc pl-4 text-xs mt-1"></ul>
-            <input id="subtaskInput-${index}" class="w-full p-1 border rounded mt-1 text-sm" placeholder="Añadir subtarea...">
-            <button onclick="addSubtask(${index}, 'today')" class="mt-1 bg-green-500 text-white px-2 py-1 rounded text-xs">Añadir</button>
-            ${meetingButtons}
-          </div>
-        `;
-        todayAgendaDiv.appendChild(block);
-        updateSubtasks(index, "today");
-      });
-    }
-
-    // Renderizar agenda de mañana
-    const tomorrowAgendaDiv = document.getElementById("tomorrowAgenda");
-    function renderTomorrowAgenda() {
-      tomorrowAgendaDiv.innerHTML = "";
-      tomorrowSchedule.forEach((item, index) => {
-        const block = document.createElement("div");
-        block.className = "bg-white p-3 rounded shadow flex justify-between items-center";
-        block.innerHTML = `
-          <div>
-            <p class="text-sm font-semibold">${item.time}</p>
-            <p class="text-sm">${item.activity}</p>
-            <ul id="tomorrow-subtasks-${index}" class="list-disc pl-4 text-xs mt-1"></ul>
-            <input id="tomorrow-subtaskInput-${index}" class="w-full p-1 border rounded mt-1 text-sm" placeholder="Añadir subtarea...">
-            <button onclick="addSubtask(${index}, 'tomorrow')" class="mt-1 bg-green-500 text-white px-2 py-1 rounded text-xs">Añadir</button>
-          </div>
-        `;
-        tomorrowAgendaDiv.appendChild(block);
-        updateSubtasks(index, "tomorrow");
-      });
-    }
-
-    // Añadir subtarea
-    window.addSubtask = function(index, type) {
-      const schedule = type === "today" ? todaySchedule : tomorrowSchedule;
-      const input = document.getElementById(`${type}-subtaskInput-${index}`);
-      if (input.value.trim()) {
-        schedule[index].subtasks.push(input.value.trim());
-        updateSubtasks(index, type);
-        input.value = "";
-        saveSchedules();
-      }
-    };
-
-    // Actualizar subtareas
-    function updateSubtasks(index, type) {
-      const schedule = type === "today" ? todaySchedule : tomorrowSchedule;
-      const list = document.getElementById(`${type}-subtasks-${index}`);
-      list.innerHTML = schedule[index].subtasks.map(task => `<li>${task}</li>`).join("");
-    }
-
-    // Gestionar reuniones
-    window.setMeeting = function(index, hasMeeting) {
-      todaySchedule[index].hasMeeting = hasMeeting;
-      if (!hasMeeting) {
-        todaySchedule[index].activity = "Planificación o aprendizaje";
-        todaySchedule[index].subtasks = [];
-      }
-      renderTodayAgenda();
-      saveSchedules();
-    };
-
-    // Guardar agendas
-    function saveSchedules() {
-      localStorage.setItem("todaySchedule", JSON.stringify(todaySchedule));
-      localStorage.setItem("tomorrowSchedule", JSON.stringify(tomorrowSchedule));
-    }
-
-    // Cargar agendas
-    function loadSchedules() {
-      const todaySaved = localStorage.getItem("todaySchedule");
-      const tomorrowSaved = localStorage.getItem("tomorrowSchedule");
-      if (todaySaved) todaySchedule = JSON.parse(todaySaved);
-      if (tomorrowSaved) tomorrowSchedule = JSON.parse(tomorrowSaved);
-      renderTodayAgenda();
-      renderTomorrowAgenda();
-    }
-    loadSchedules();
-
-    // Rotar agendas al final del día
-    function rotateSchedules() {
-      const now = new Date();
-      const midnight = new Date(now);
-      midnight.setHours(24, 0, 0, 0);
-      const timeUntilMidnight = midnight - now;
-      setTimeout(() => {
-        todaySchedule = JSON.parse(JSON.stringify(tomorrowSchedule));
-        tomorrowSchedule = JSON.parse(JSON.stringify(todaySchedule)).map(item => ({
-          ...item,
-          subtasks: [],
-          hasMeeting: item.activity.includes("Reuniones") ? null : undefined
-        }));
-        saveSchedules();
-        renderTodayAgenda();
-        renderTomorrowAgenda();
-        scheduleNotifications();
-        rotateSchedules();
-      }, timeUntilMidnight);
-    }
-    rotateSchedules();
-
-    // Notificaciones y voz
-    let notificationsEnabled = false;
-    const enableNotificationsBtn = document.getElementById("enableNotifications");
-    const notificationStatus = document.getElementById("notificationStatus");
-
-    enableNotificationsBtn.addEventListener("click", () => {
-      Notification.requestPermission().then(permission => {
-        if (permission === "granted") {
-          notificationsEnabled = true;
-          notificationStatus.textContent = "Estado: Activadas";
-          scheduleNotifications();
-        } else {
-          notificationStatus.textContent = "Estado: Permiso denegado";
-        }
-      });
+    // Renderizar tabla
+    const agendaTable = document.getElementById("agendaTable");
+    schedule.forEach(item => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td class="p-2 border text-sm">${item.time}</td>
+        <td class="p-2 border text-sm">${item.activity}</td>
+      `;
+      agendaTable.appendChild(row);
     });
 
-    function sendNotification(time, activity, subtasks) {
-      if (notificationsEnabled && Notification.permission === "granted") {
-        const body = subtasks.length ? `${activity} (Subtareas: ${subtasks.join(", ")})` : activity;
+    // Notificaciones y voz
+    function requestNotificationPermission() {
+      if (Notification.permission !== "granted") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            scheduleNotifications();
+          }
+        });
+      } else {
+        scheduleNotifications();
+      }
+    }
+
+    function sendNotification(time, activity) {
+      if (Notification.permission === "granted") {
         new Notification(`Nonualco Shop - ${time}`, {
-          body,
+          body: activity,
           icon: "https://via.placeholder.com/32",
         });
         // Sonido fuerte
         const audio = new Audio("https://freesound.org/data/previews/320/320873_5260872-lq.mp3");
         audio.play();
         // Leer en voz alta
-        const utterance = new SpeechSynthesisUtterance(`A las ${time}: ${body}`);
+        const utterance = new SpeechSynthesisUtterance(`A las ${time}: ${activity}`);
         utterance.lang = "es-ES";
         window.speechSynthesis.speak(utterance);
       }
@@ -238,43 +103,29 @@
     // Programar notificaciones
     function scheduleNotifications() {
       const now = new Date();
-      todaySchedule.forEach(item => {
-        if (!item.activity.includes("Dormir")) {
-          const [startTime] = item.time.split(" - ");
-          const [hours, minutes, period] = startTime.match(/(\d+):(\d+)\s*(AM|PM)/).slice(1);
-          let hour = parseInt(hours);
-          if (period === "PM" && hour !== 12) hour += 12;
-          if (period === "AM" && hour === 12) hour = 0;
-          const taskTime = new Date(now);
-          taskTime.setHours(hour, parseInt(minutes), 0, 0);
+      schedule.forEach(item => {
+        const [startTime] = item.time.split(" - ");
+        const [hours, minutes, period] = startTime.match(/(\d+):(\d+)\s*(AM|PM)/).slice(1);
+        let hour = parseInt(hours);
+        if (period === "PM" && hour !== 12) hour += 12;
+        if (period === "AM" && hour === 12) hour = 0;
+        const taskTime = new Date(now);
+        taskTime.setHours(hour, parseInt(minutes), 0, 0);
 
-          if (taskTime > now) {
-            const delay = taskTime - now;
-            setTimeout(() => sendNotification(item.time, item.activity, item.subtasks), delay);
-          }
+        if (taskTime > now) {
+          const delay = taskTime - now;
+          setTimeout(() => sendNotification(item.time, item.activity), delay);
         }
       });
     }
 
-    // Mostrar/ocultar agenda de mañana
-    const planTomorrowBtn = document.getElementById("planTomorrow");
-    planTomorrowBtn.addEventListener("click", () => {
-      tomorrowAgendaDiv.classList.toggle("hidden");
-      renderTomorrowAgenda();
-    });
+    // Pedir permiso al cargar
+    requestNotificationPermission();
 
-    // Interacción con Grok
-    const grokInput = document.getElementById("grokInput");
-    const grokSubmit = document.getElementById("grokSubmit");
-    const grokResponse = document.getElementById("grokResponse");
-
-    grokSubmit.addEventListener("click", () => {
-      const input = grokInput.value.trim();
-      if (input) {
-        let response = "Entendido, Josué. ";
-        if (input.includes("subtarea")) {
-          const match = input.match(/para (.+): (.+)/);
-          if (match) {
-            const activity = match '
-
-System: * Today's date and time is 01:31 PM CST on Friday, May 16, 2025.
+    // Service Worker para PWA
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("data:application/javascript,addEventListener('install',()=>{self.skipWaiting()});addEventListener('activate',e=>{e.waitUntil(self.clients.claim())});addEventListener('fetch',e=>{e.respondWith(fetch(e.request))});");
+    }
+  </script>
+</body>
+</html>
